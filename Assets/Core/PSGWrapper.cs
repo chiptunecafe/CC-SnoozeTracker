@@ -56,8 +56,12 @@ public class PSGWrapper : MonoBehaviour {
     public SN76489 chip { get { return m_PSGChip; } }
     public AudioSource audioSource;
     public SongPlayback playback;
+	public Arduino arduino;
     [HideInInspector]
     public bool recordRegisters;
+
+    public SN76489.Clock clockFrequency = SN76489.Clock.PAL;
+    public int refreshRate = 50;
 
     private long m_CurrentSample;
     private SN76489 m_PSGChip;
@@ -70,7 +74,7 @@ public class PSGWrapper : MonoBehaviour {
     void Awake()
     {
         m_SampleRate = AudioSettings.outputSampleRate;
-        m_PSGChip = new SN76489(m_SampleRate, (int)SN76489.Clock.PAL);
+        m_PSGChip = new SN76489(m_SampleRate, (int)clockFrequency);
         Debug.Log ( AudioSettings.outputSampleRate );   
         ResetChip();
     }
@@ -138,7 +142,7 @@ public class PSGWrapper : MonoBehaviour {
     {
         if (channel < 3)
         {
-            int freq = CalculatePSGFreq(note, octave, fineTune);
+            int freq = CalculatePSGFreq((int)clockFrequency, note, octave, fineTune);
             freq = Mathf.Clamp ( freq, 0x00, 0x3FF );
             SetFrequency(channel, freq);
         }
@@ -152,13 +156,14 @@ public class PSGWrapper : MonoBehaviour {
         byte reg = (byte)((channel * 2) << 4);
         byte data = (byte)(0x80 | reg | (frequency & 0xF));
         m_PSGChip.Write(data);
+		arduino.WriteByte((byte)data);
 
         RegisterWritten( FileManagement.VGMCommands.PSGWrite, data );
 
         byte data1 = data;
         data = (byte)((frequency >> 4) & 0x3F);
         m_PSGChip.Write(data);
-
+		arduino.WriteByte((byte)data);
         RegisterWritten( FileManagement.VGMCommands.PSGWrite, data );
     }
 
@@ -171,7 +176,7 @@ public class PSGWrapper : MonoBehaviour {
         byte reg = (byte)((channel * 2 + 1) << 4);
         byte data = (byte)(0x80 | reg | (attenuation & 0x0F));
         m_PSGChip.Write(data);
-
+		arduino.WriteByte((byte)data);
         RegisterWritten( FileManagement.VGMCommands.PSGWrite, data );
     }
 
@@ -188,6 +193,7 @@ public class PSGWrapper : MonoBehaviour {
 
         m_PSGChip.Write(data);
         RegisterWritten( FileManagement.VGMCommands.PSGWrite, data );
+		arduino.WriteByte((byte)data);
     }
 
     public List<RegisterWrite> RecordRegisters(bool record = true)
@@ -215,13 +221,13 @@ public class PSGWrapper : MonoBehaviour {
         m_WriteWait = 0;
     }
 
-    public static int CalculatePSGFreq(int note, int octave, int fineTune = 0)
+    public static int CalculatePSGFreq(int clock, int note, int octave, int fineTune = 0)
     {
         int freq = ( int ) ( CalculateNoteFreq ( note, octave ) + fineTune );
         if ( freq == 0 )
             return 0;
 
-        int div = (int)SN76489.Clock.PAL / 32 / freq;
+        int div = clock / 32 / freq;
         //Debug.Log(div.ToString("X2"));
         return div;
     }
