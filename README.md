@@ -1,4 +1,4 @@
-# 0CC-SnoozeTracker
+# CC-SnoozeTracker
 SN76489 tracker made with Unity. Supports custom waveforms and samples (even on noise PSG!).
 
 Requires tiny file dialogs in Plugins folder for appropriate architecture/OS (https://sourceforge.net/projects/tinyfiledialogs/)
